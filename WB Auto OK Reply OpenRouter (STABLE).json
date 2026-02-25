@@ -203,20 +203,6 @@
     },
     {
       "parameters": {
-        "amount": 30
-      },
-      "id": "c15aba43-ce09-4584-a820-b17c5bb58ac8",
-      "name": "⏳ Wait 30 sec",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        36256,
-        19392
-      ],
-      "webhookId": "5c548eac-dffc-467e-9752-c7f138df5ac6"
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "https://feedbacks-api.wildberries.ru/api/v1/feedbacks/answer",
         "sendHeaders": true,
@@ -253,20 +239,7 @@
       ]
     },
     
-    {
-      "parameters": {
-        "amount": 60
-      },
-      "id": "49d40a86-9a4a-403b-b91d-33435eda58ae",
-      "name": "⏳ Wait 60 sec",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        36688,
-        19392
-      ],
-      "webhookId": "046984c1-6605-441b-9227-ef415513e954"
-    },
+    
     {
       "parameters": {
         "model": "openrouter/free",
@@ -385,7 +358,7 @@
       "main": [
         [
           {
-            "node": "⏳ Wait 30 sec",
+            "node": "Send Answer to WB",
             "type": "main",
             "index": 0
           }
@@ -404,15 +377,7 @@
       ]
     },
     "Send Answer to WB": {
-      "main": [
-        [
-          {
-            "node": "⏳ Wait 60 sec",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": []
     },
     "OpenRouter Chat Model1": {
       "ai_languageModel": [
