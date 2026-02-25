@@ -141,6 +141,37 @@
               "value": "={{ ($json.customerName ? 'Покупатель: ' + $json.customerName + '\\n\\n' : '') + 'Товар: ' + ($json.productName || 'товар') + '\\n\\nОценка: ' + $json.productValuation + ' звёзд\\n\\nОтзыв: ' + $json.text + '\\n\\nНапиши благодарственный ответ на русском языке.' }}",
               "type": "string"
             }
+            ,
+            {
+              "id": "keep-id",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-reviewId",
+              "name": "reviewId",
+              "value": "={{ $json.reviewId || $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-text",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-productName",
+              "name": "productName",
+              "value": "={{ $json.productName }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-customerName",
+              "name": "customerName",
+              "value": "={{ $json.customerName }}",
+              "type": "string"
+            }
           ]
         },
         "options": {}
@@ -168,6 +199,37 @@
               "id": "userPrompt",
               "name": "userPrompt",
               "value": "={{ ($json.customerName ? 'Покупатель: ' + $json.customerName + '\\n\\n' : '') + 'Товар: ' + ($json.productName || 'товар') + '\\n\\nОценка: ' + $json.productValuation + ' звёзд\\n\\nОтзыв: ' + $json.text + '\\n\\nНапиши ответ с извинениями на русском языке.' }}",
+              "type": "string"
+            }
+            ,
+            {
+              "id": "keep-id-neg",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-reviewId-neg",
+              "name": "reviewId",
+              "value": "={{ $json.reviewId || $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-text-neg",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-productName-neg",
+              "name": "productName",
+              "value": "={{ $json.productName }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-customerName-neg",
+              "name": "customerName",
+              "value": "={{ $json.customerName }}",
               "type": "string"
             }
           ]
@@ -203,6 +265,35 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prepare-request",
+              "name": "requestBody",
+              "value": "={{ { id: $json.id, reviewId: ($json.reviewId || $json.id), text: ($json.output || $json.text || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '') } }}",
+              "type": "json"
+            },
+            {
+              "id": "debug-request",
+              "name": "debugRequestBody",
+              "value": "={{ JSON.stringify($json.requestBody) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-send-1111",
+      "name": "Prepare Send Body",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        36256,
+        19392
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://feedbacks-api.wildberries.ru/api/v1/feedbacks/answer",
         "sendHeaders": true,
@@ -221,6 +312,7 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"id\": \"{{ $json.id }}\",\n  \"reviewId\": \"={{ $json.reviewId || $json.id }}\",\n  \"text\": \"={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}\"\n}",
+        "jsonBody": "{\n  \"id\": \"{{ $json.requestBody.id }}\",\n  \"reviewId\": \"={{ $json.requestBody.reviewId }}\",\n  \"text\": \"={{ $json.requestBody.text }}\"\n}",
         "options": {
           "response": {
             "response": {
@@ -235,6 +327,43 @@
       "typeVersion": 4.2,
       "position": [
         36480,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://feedbacks-api.wildberries.ru/api/v1/feedbacks/answer",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwOTA0djEiLCJ0eXAiOiJKV1QifQ.eyJhY2MiOjEsImVudCI6MSwiZXhwIjoxNzg3MjY4NTcwLCJpZCI6IjAxOWM3NWE5LTg4MDctNzk3Ni1hYTAwLWM5ODIzYjY3MzA5OCIsImlpZCI6NDYyMTg4OTAsIm9pZCI6NDYxOTAsInMiOjEyMDMwLCJzaWQiOiI5MmZkMzIxOS1iNzhlLTU4MjctODM1Ni00YzRlNjNiNjQwNWIiLCJ0IjpmYWxzZSwidWlkIjo0NjIxODg5MH0.o4T6GosZfIwjJPtH4D6BXMyew8oLJUv-gB-gkSlKXVZW5QyAlMWZP4BO-AU7mbldwtJMTeAIg-jqwfLW1zlEsA"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"id\": \"{{ $json.requestBody.id }}\",\n  \"reviewId\": \"={{ $json.requestBody.reviewId }}\",\n  \"text\": \"={{ $json.requestBody.text }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "resend-answer-2222",
+      "name": "Resend Answer to WB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        37392,
         19392
       ]
     },
@@ -461,6 +590,17 @@
       "main": [
         [
           {
+            "node": "Prepare Send Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Send Body": {
+      "main": [
+        [
+          {
             "node": "Send Answer to WB",
             "type": "main",
             "index": 0
@@ -472,7 +612,7 @@
       "main": [
         [
           {
-            "node": "Verify Answer on WB",
+            "node": "Resend Answer to WB",
             "type": "main",
             "index": 0
           }
@@ -480,6 +620,17 @@
       ]
     },
     "Send Answer to WB": {
+      "main": [
+        [
+          {
+            "node": "Verify Answer on WB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resend Answer to WB": {
       "main": [
         [
           {
