@@ -252,35 +252,7 @@
         19392
       ]
     },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "debug-id",
-              "name": "debug_id",
-              "value": "={{ $json.id }}",
-              "type": "string"
-            },
-            {
-              "id": "debug-text",
-              "name": "debug_text",
-              "value": "={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "b1c2d3e4-0000-4000-0000-abcdef123456",
-      "name": "Debug: Log Before Send",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        36368,
-        19392
-      ]
-    },
+    
     {
       "parameters": {
         "amount": 60
@@ -421,17 +393,6 @@
       ]
     },
     "⏳ Wait 30 sec": {
-      "main": [
-        [
-          {
-            "node": "Debug: Log Before Send",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Debug: Log Before Send": {
       "main": [
         [
           {
