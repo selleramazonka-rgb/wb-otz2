@@ -67,7 +67,8 @@
     },
     {
       "parameters": {
-        "jsCode": "const feedbacks = $input.first().json.data?.feedbacks || [];\n\nreturn feedbacks.map(item => {\n  let moscowDate = null;\n  let moscowDateFormatted = null;\n  \n  if (item.createdDate) {\n    const utcDate = new Date(item.createdDate);\n    const moscowTime = new Date(utcDate.getTime() + 10800000);\n    moscowDate = moscowTime;\n    moscowDateFormatted = moscowTime.toLocaleString('ru-RU', {\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false\n    });\n  }\n  \n  const customerName = item.authorName && \n                       item.authorName !== 'Покупатель Wildberries' && \n                       item.authorName.trim() !== '' \n    ? item.authorName.trim() \n    : null;\n\n  return {\n    json: {\n      ...item,\n      customerName: customerName,\n      dateMoscow: moscowDateFormatted\n    }\n  };\n});"
+        "jsCode": "const feedbacks = $input.first().json.data?.feedbacks || [];\n\nreturn feedbacks.map(item => {\n  let moscowDate = null;\n  let moscowDateFormatted = null;\n\n  if (item.createdDate) {\n    const utcDate = new Date(item.createdDate);\n    const moscowTime = new Date(utcDate.getTime() + 10800000);\n    moscowDate = moscowTime;\n    moscowDateFormatted = moscowTime.toLocaleString('ru-RU', {\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false\n    });\n  }\n\n  const customerName = (item.authorName && item.authorName !== 'Покупатель Wildberries' && item.authorName.trim() !== '')\n    ? item.authorName.trim()\n    : (item.customerName && item.customerName.trim() !== '' ? item.customerName.trim() : null);\n\n  const productName = item.productName || (item.productDetails && item.productDetails.productName) || null;\n\n  return {\n    json: {\n      ...item,\n      customerName: customerName,\n      productName: productName,\n      dateMoscow: moscowDateFormatted\n    }\n  };\n});"
+
       },
       "id": "7d6ee683-1d1a-436e-900b-d60600b4b4b3",
       "name": "Unpack Feedbacks",
@@ -233,7 +234,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"id\": \"{{ $json.id }}\",\n  \"text\": \"{{ $json.output }}\"\n}",
+        "jsonBody": "{\n  \"id\": \"{{ $json.id }}\",\n  \"reviewId\": \"={{ $json.reviewId || $json.id }}\",\n  \"text\": \"={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}\"\n}",
         "options": {
           "response": {
             "response": {
@@ -248,6 +249,35 @@
       "typeVersion": 4.2,
       "position": [
         36480,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "debug-id",
+              "name": "debug_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "debug-text",
+              "name": "debug_text",
+              "value": "={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1c2d3e4-0000-4000-0000-abcdef123456",
+      "name": "Debug: Log Before Send",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        36368,
         19392
       ]
     },
@@ -384,6 +414,28 @@
         [
           {
             "node": "⏳ Wait 30 sec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏳ Wait 30 sec": {
+      "main": [
+        [
+          {
+            "node": "Debug: Log Before Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug: Log Before Send": {
+      "main": [
+        [
+          {
+            "node": "Send Answer to WB",
             "type": "main",
             "index": 0
           }
