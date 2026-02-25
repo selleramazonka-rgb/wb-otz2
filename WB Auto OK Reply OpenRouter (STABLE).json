@@ -1,0 +1,429 @@
+{
+  "name": "WB Auto Reply OpenRouter (STABLE)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 120
+            }
+          ]
+        }
+      },
+      "id": "4c12d96e-ddca-43c3-9405-3efabbead4d8",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        34720,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://feedbacks-api.wildberries.ru/api/v1/feedbacks",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "take",
+              "value": "1"
+            },
+            {
+              "name": "skip",
+              "value": "0"
+            },
+            {
+              "name": "isAnswered",
+              "value": "=false"
+            },
+            {
+              "name": "order",
+              "value": "dateDesc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwOTA0djEiLCJ0eXAiOiJKV1QifQ.eyJhY2MiOjEsImVudCI6MSwiZXhwIjoxNzg3MjY4NTcwLCJpZCI6IjAxOWM3NWE5LTg4MDctNzk3Ni1hYTAwLWM5ODIzYjY3MzA5OCIsImlpZCI6NDYyMTg4OTAsIm9pZCI6NDYxOTAsInMiOjEyMDMwLCJzaWQiOiI5MmZkMzIxOS1iNzhlLTU4MjctODM1Ni00YzRlNjNiNjQwNWIiLCJ0IjpmYWxzZSwidWlkIjo0NjIxODg5MH0.o4T6GosZfIwjJPtH4D6BXMyew8oLJUv-gB-gkSlKXVZW5QyAlMWZP4BO-AU7mbldwtJMTeAIg-jqwfLW1zlEsA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "63f86286-f001-49f7-bb38-7dbea50424d5",
+      "name": "Get Unanswered Reviews",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        34928,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const feedbacks = $input.first().json.data?.feedbacks || [];\n\nreturn feedbacks.map(item => {\n  let moscowDate = null;\n  let moscowDateFormatted = null;\n  \n  if (item.createdDate) {\n    const utcDate = new Date(item.createdDate);\n    const moscowTime = new Date(utcDate.getTime() + 10800000);\n    moscowDate = moscowTime;\n    moscowDateFormatted = moscowTime.toLocaleString('ru-RU', {\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false\n    });\n  }\n  \n  const customerName = item.authorName && \n                       item.authorName !== 'Покупатель Wildberries' && \n                       item.authorName.trim() !== '' \n    ? item.authorName.trim() \n    : null;\n\n  return {\n    json: {\n      ...item,\n      customerName: customerName,\n      dateMoscow: moscowDateFormatted\n    }\n  };\n});"
+      },
+      "id": "7d6ee683-1d1a-436e-900b-d60600b4b4b3",
+      "name": "Unpack Feedbacks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        35152,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f7edd334-ad05-493f-a7df-def1d780b93d",
+      "name": "Process One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        35376,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "rating-condition-1",
+              "leftValue": "={{ $json.productValuation }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "17f3493f-262a-403e-a83f-a81f50de8e41",
+      "name": "⚡ If Rating 4 or 5?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        35600,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt-positive",
+              "name": "systemPrompt",
+              "value": "Ты менеджер поддержки Wildberries. Отвечай ТОЛЬКО НА РУССКОМ ЯЗЫКЕ (кириллица).\n\nПРАВИЛА:\n1. Если есть имя покупателя - обращайся по имени\n2. Если имени нет - начни с нейтрального приветствия\n3. Поблагодари за высокую оценку (4-5 звёзд)\n4. Упомяни товар из отзыва\n5. Максимум 2-3 предложения\n6. Без эмодзи\n7. Дружелюбный тон",
+              "type": "string"
+            },
+            {
+              "id": "userPrompt",
+              "name": "userPrompt",
+              "value": "={{ ($json.customerName ? 'Покупатель: ' + $json.customerName + '\\n\\n' : '') + 'Товар: ' + ($json.productName || 'товар') + '\\n\\nОценка: ' + $json.productValuation + ' звёзд\\n\\nОтзыв: ' + $json.text + '\\n\\nНапиши благодарственный ответ на русском языке.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "11ebb350-2f6b-44f4-902a-4a362ab2f92a",
+      "name": "📝 Prompt: 4-5 Звёзд",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        35808,
+        19280
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt-negative",
+              "name": "systemPrompt",
+              "value": "Ты менеджер поддержки Wildberries. Отвечай ТОЛЬКО НА РУССКОМ ЯЗЫКЕ (кириллица).\n\nПРАВИЛА:\n1. Если есть имя покупателя - обращайся по имени\n2. Если имени нет - начни с нейтрального приветствия\n3. Извинись за негативный опыт (1-3 звезды)\n4. Упомяни товар из отзыва\n5. Предложи решение проблемы\n6. Максимум 2-3 предложения\n7. Без эмодзи\n8. Заботливый тон",
+              "type": "string"
+            },
+            {
+              "id": "userPrompt",
+              "name": "userPrompt",
+              "value": "={{ ($json.customerName ? 'Покупатель: ' + $json.customerName + '\\n\\n' : '') + 'Товар: ' + ($json.productName || 'товар') + '\\n\\nОценка: ' + $json.productValuation + ' звёзд\\n\\nОтзыв: ' + $json.text + '\\n\\nНапиши ответ с извинениями на русском языке.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7fcd6050-d857-45ed-be2a-a2d359f32f2a",
+      "name": "📝 Prompt: 1-3 Звезды",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        35808,
+        19488
+      ]
+    },
+    {
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "define",
+        "text": "={{ $json.userPrompt }}",
+        "options": {
+          "systemMessage": "={{ $json.systemPrompt }}"
+        }
+      },
+      "id": "f3b7c901-4718-4bd1-88ad-3896edfc2c17",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        36032,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "c15aba43-ce09-4584-a820-b17c5bb58ac8",
+      "name": "⏳ Wait 30 sec",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        36256,
+        19392
+      ],
+      "webhookId": "5c548eac-dffc-467e-9752-c7f138df5ac6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://feedbacks-api.wildberries.ru/api/v1/feedbacks/answer",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwOTA0djEiLCJ0eXAiOiJKV1QifQ.eyJhY2MiOjEsImVudCI6MSwiZXhwIjoxNzg3MjY4NTcwLCJpZCI6IjAxOWM3NWE5LTg4MDctNzk3Ni1hYTAwLWM5ODIzYjY3MzA5OCIsImlpZCI6NDYyMTg4OTAsIm9pZCI6NDYxOTAsInMiOjEyMDMwLCJzaWQiOiI5MmZkMzIxOS1iNzhlLTU4MjctODM1Ni00YzRlNjNiNjQwNWIiLCJ0IjpmYWxzZSwidWlkIjo0NjIxODg5MH0.o4T6GosZfIwjJPtH4D6BXMyew8oLJUv-gB-gkSlKXVZW5QyAlMWZP4BO-AU7mbldwtJMTeAIg-jqwfLW1zlEsA"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"id\": \"{{ $json.id }}\",\n  \"text\": \"{{ $json.output }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "1a7e7f8f-70e0-422b-8a77-2f301d0c6cbb",
+      "name": "Send Answer to WB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        36480,
+        19392
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "id": "49d40a86-9a4a-403b-b91d-33435eda58ae",
+      "name": "⏳ Wait 60 sec",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        36688,
+        19392
+      ],
+      "webhookId": "046984c1-6605-441b-9227-ef415513e954"
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        35904,
+        19600
+      ],
+      "id": "d505ae4f-ec77-487a-9abf-228fa07be5d4",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "vfKjc6B2J0U0qTlo",
+          "name": "OpenRouter account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Unanswered Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unanswered Reviews": {
+      "main": [
+        [
+          {
+            "node": "Unpack Feedbacks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unpack Feedbacks": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One by One": {
+      "main": [
+        [
+          {
+            "node": "⚡ If Rating 4 or 5?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚡ If Rating 4 or 5?": {
+      "main": [
+        [
+          {
+            "node": "📝 Prompt: 4-5 Звёзд",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📝 Prompt: 1-3 Звезды",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Prompt: 4-5 Звёзд": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Prompt: 1-3 Звезды": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "⏳ Wait 30 sec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Answer to WB": {
+      "main": [
+        [
+          {
+            "node": "⏳ Wait 60 sec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5c11affa-84d3-4625-886c-99c9dd73155e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a17f7186dae1a0a4a217657098e5364870a5ce7319662eeafab6746582796adb"
+  },
+  "id": "iIZD58N47CE8pGux",
+  "tags": []
+}
