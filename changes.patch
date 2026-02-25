@@ -1,0 +1,124 @@
+From 3de7a019b68af47a890a4449110703d0d5e57595 Mon Sep 17 00:00:00 2001
+From: selleramazonka-rgb <seller.amazonka@gmail.com>
+Date: Wed, 25 Feb 2026 16:12:17 +0000
+Subject: [PATCH] Fix Unpack Feedbacks: preserve customerName and set
+ productName; add reviewId to Send Answer; add debug node and fallback for
+ response text
+
+
+diff --git a/PR_README.md b/PR_README.md
+new file mode 100644
+index 0000000..20543c9
+--- /dev/null
++++ b/PR_README.md
+@@ -0,0 +1,22 @@
++PR: Fix Unpack Feedbacks and Send Answer to WB
++
++Что сделано:
++- Исправлена нода `Unpack Feedbacks`: теперь сохраняется существующее `customerName` и добавляется `productName` из `productDetails`, если отсутствует.
++- В `Send Answer to WB` добавлено поле `reviewId` (fallback на `id`).
++- Добавлен временный `Debug: Log Before Send` нода для проверки `id` и текста перед отправкой.
++- Добавлены fallback-поля для текста ответа (output/text/answer/choices).
++
++Почему:
++- Ранее `customerName` затирался и `productName` не попадал в prompt, что могло приводить к пустым ответам или отсутствию упоминания товара/имени в ответе.
++- Поле `reviewId` добавлено в тело запроса для совместимости с API и корректного сопоставления отзыва.
++
++Как протестировать:
++1. Импортировать `WB Auto OK Reply OpenRouter (STABLE).json` в n8n.
++2. Выполнить `Execute Workflow` (ручной запуск).
++3. В последнем исполнении открыть ноду `Debug: Log Before Send` — проверить `debug_id` и `debug_text`.
++4. Открыть ноду `Send Answer to WB` — убедиться, что Request Body содержит `id`, `reviewId`, `text`.
++5. При успешном ответе (204) выполнить GET на feedbacks API для проверки, что поле `answer` установлено.
++
++Дальнейшие шаги:
++- После валидации удалить или отключить `Debug: Log Before Send`.
++- (Опционально) создать PR в репозиторий и попросить коллег проверить изменения в n8n.
+diff --git a/WB Auto OK Reply OpenRouter (STABLE).json b/WB Auto OK Reply OpenRouter (STABLE).json
+index ef7aad1..544c459 100644
+--- a/WB Auto OK Reply OpenRouter (STABLE).json	
++++ b/WB Auto OK Reply OpenRouter (STABLE).json	
+@@ -67,7 +67,8 @@
+     },
+     {
+       "parameters": {
+-        "jsCode": "const feedbacks = $input.first().json.data?.feedbacks || [];\n\nreturn feedbacks.map(item => {\n  let moscowDate = null;\n  let moscowDateFormatted = null;\n  \n  if (item.createdDate) {\n    const utcDate = new Date(item.createdDate);\n    const moscowTime = new Date(utcDate.getTime() + 10800000);\n    moscowDate = moscowTime;\n    moscowDateFormatted = moscowTime.toLocaleString('ru-RU', {\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false\n    });\n  }\n  \n  const customerName = item.authorName && \n                       item.authorName !== 'Покупатель Wildberries' && \n                       item.authorName.trim() !== '' \n    ? item.authorName.trim() \n    : null;\n\n  return {\n    json: {\n      ...item,\n      customerName: customerName,\n      dateMoscow: moscowDateFormatted\n    }\n  };\n});"
++        "jsCode": "const feedbacks = $input.first().json.data?.feedbacks || [];\n\nreturn feedbacks.map(item => {\n  let moscowDate = null;\n  let moscowDateFormatted = null;\n\n  if (item.createdDate) {\n    const utcDate = new Date(item.createdDate);\n    const moscowTime = new Date(utcDate.getTime() + 10800000);\n    moscowDate = moscowTime;\n    moscowDateFormatted = moscowTime.toLocaleString('ru-RU', {\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false\n    });\n  }\n\n  const customerName = (item.authorName && item.authorName !== 'Покупатель Wildberries' && item.authorName.trim() !== '')\n    ? item.authorName.trim()\n    : (item.customerName && item.customerName.trim() !== '' ? item.customerName.trim() : null);\n\n  const productName = item.productName || (item.productDetails && item.productDetails.productName) || null;\n\n  return {\n    json: {\n      ...item,\n      customerName: customerName,\n      productName: productName,\n      dateMoscow: moscowDateFormatted\n    }\n  };\n});"
++
+       },
+       "id": "7d6ee683-1d1a-436e-900b-d60600b4b4b3",
+       "name": "Unpack Feedbacks",
+@@ -233,7 +234,7 @@
+         },
+         "sendBody": true,
+         "specifyBody": "json",
+-        "jsonBody": "{\n  \"id\": \"{{ $json.id }}\",\n  \"text\": \"{{ $json.output }}\"\n}",
++        "jsonBody": "{\n  \"id\": \"{{ $json.id }}\",\n  \"reviewId\": \"={{ $json.reviewId || $json.id }}\",\n  \"text\": \"={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}\"\n}",
+         "options": {
+           "response": {
+             "response": {
+@@ -251,6 +252,35 @@
+         19392
+       ]
+     },
++    {
++      "parameters": {
++        "assignments": {
++          "assignments": [
++            {
++              "id": "debug-id",
++              "name": "debug_id",
++              "value": "={{ $json.id }}",
++              "type": "string"
++            },
++            {
++              "id": "debug-text",
++              "name": "debug_text",
++              "value": "={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}",
++              "type": "string"
++            }
++          ]
++        },
++        "options": {}
++      },
++      "id": "b1c2d3e4-0000-4000-0000-abcdef123456",
++      "name": "Debug: Log Before Send",
++      "type": "n8n-nodes-base.set",
++      "typeVersion": 3.4,
++      "position": [
++        36368,
++        19392
++      ]
++    },
+     {
+       "parameters": {
+         "amount": 60
+@@ -390,6 +420,28 @@
+         ]
+       ]
+     },
++    "⏳ Wait 30 sec": {
++      "main": [
++        [
++          {
++            "node": "Debug: Log Before Send",
++            "type": "main",
++            "index": 0
++          }
++        ]
++      ]
++    },
++    "Debug: Log Before Send": {
++      "main": [
++        [
++          {
++            "node": "Send Answer to WB",
++            "type": "main",
++            "index": 0
++          }
++        ]
++      ]
++    },
+     "Send Answer to WB": {
+       "main": [
+         [
