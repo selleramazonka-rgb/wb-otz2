@@ -7,18 +7,18 @@
           "interval": [
             {
               "field": "minutes",
-              "minutesInterval": 120
+              "minutesInterval": 3
             }
           ]
         }
       },
-      "id": "4c12d96e-ddca-43c3-9405-3efabbead4d8",
+      "id": "6e28406c-919c-481b-909d-0670b9d1238c",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        34720,
-        19392
+        10464,
+        5072
       ]
     },
     {
@@ -56,40 +56,39 @@
         },
         "options": {}
       },
-      "id": "63f86286-f001-49f7-bb38-7dbea50424d5",
+      "id": "75ae6eee-1024-4f0f-99ef-b80d66ecea5b",
       "name": "Get Unanswered Reviews",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        34928,
-        19392
+        10672,
+        5072
       ]
     },
     {
       "parameters": {
         "jsCode": "const feedbacks = $input.first().json.data?.feedbacks || [];\n\nreturn feedbacks.map(item => {\n  let moscowDate = null;\n  let moscowDateFormatted = null;\n\n  if (item.createdDate) {\n    const utcDate = new Date(item.createdDate);\n    const moscowTime = new Date(utcDate.getTime() + 10800000);\n    moscowDate = moscowTime;\n    moscowDateFormatted = moscowTime.toLocaleString('ru-RU', {\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false\n    });\n  }\n\n  const customerName = (item.authorName && item.authorName !== 'Покупатель Wildberries' && item.authorName.trim() !== '')\n    ? item.authorName.trim()\n    : (item.customerName && item.customerName.trim() !== '' ? item.customerName.trim() : null);\n\n  const productName = item.productName || (item.productDetails && item.productDetails.productName) || null;\n\n  return {\n    json: {\n      ...item,\n      customerName: customerName,\n      productName: productName,\n      dateMoscow: moscowDateFormatted\n    }\n  };\n});"
-
       },
-      "id": "7d6ee683-1d1a-436e-900b-d60600b4b4b3",
+      "id": "42db65c4-435f-452b-a34b-3f7f1e61ee71",
       "name": "Unpack Feedbacks",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        35152,
-        19392
+        10896,
+        5072
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "f7edd334-ad05-493f-a7df-def1d780b93d",
+      "id": "dd364d2d-876d-4d58-802c-34fb346681c0",
       "name": "Process One by One",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        35376,
-        19392
+        11120,
+        5072
       ]
     },
     {
@@ -116,13 +115,13 @@
         },
         "options": {}
       },
-      "id": "17f3493f-262a-403e-a83f-a81f50de8e41",
+      "id": "bfb87eb5-92f9-4a68-8ed9-5a1462bb4f58",
       "name": "⚡ If Rating 4 or 5?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        35600,
-        19392
+        11344,
+        5072
       ]
     },
     {
@@ -132,26 +131,56 @@
             {
               "id": "prompt-positive",
               "name": "systemPrompt",
-              "value": "Ты менеджер поддержки Wildberries. Отвечай ТОЛЬКО НА РУССКОМ ЯЗЫКЕ (кириллица).\n\nПРАВИЛА:\n1. Если есть имя покупателя - обращайся по имени\n2. Если имени нет - начни с нейтрального приветствия\n3. Поблагодари за высокую оценку (4-5 звёзд)\n4. Упомяни товар из отзыва\n5. Максимум 2-3 предложения\n6. Без эмодзи\n7. Дружелюбный тон",
+              "value": "Роль: Ты - дружелюбный и вежливый представитель службы заботы о клиентах бренда, который отвечает на отзывы от имени бренда. \n",
               "type": "string"
             },
             {
               "id": "userPrompt",
               "name": "userPrompt",
-              "value": "={{ ($json.customerName ? 'Покупатель: ' + $json.customerName + '\\n\\n' : '') + 'Товар: ' + ($json.productName || 'товар') + '\\n\\nОценка: ' + $json.productValuation + ' звёзд\\n\\nОтзыв: ' + $json.text + '\\n\\nНапиши благодарственный ответ на русском языке.' }}",
+              "value": "=Задача: Твоя задача - отвечать на отзывы покупателей так, чтобы человек чувствовал заботу и внимание. Пиши заботливые, персонализированные и вариативные ответы на отзывы покупателей. \nТон общения: Дружелюбный, заботливый, вежливый. Избегай сухих и шаблонных фраз. Не используй шаблонов или повторяющихся формулировок. В каждом ответе проявляй креативность.\nСтиль: Живой разговорный язык, без канцеляризма, без лишнего пафоса. Избегай клише и слов в роде изделие, данный товар, результат.\n\nПравила обращения:\nОбращение к покупателю: Если в отзыве есть Имя покупателя - обратись по имени. Если имени нет или указан \"Покупатель Wildberries\": Не используй обращение по имени. Начинай ответ просто с приветствия: «Здравствуйте!», используй нейтральную теплую форму приветствия.\nПравила обработки отзывов:\nПроанализируй текст отзыва: Внимательно прочитай, что написал покупатель. Если отзыв негативный -  то необходимо ответ написать с сожалением, что не подошел товар.\nЕсли отзыв положительный: Поблагодари за выбор и теплые слова, обращай внимание на контекст и ключевые особенности текста отзыва - используй это для составления ответа.\nПиши развернутые ответы.\nЕсли отзыв отрицательный или содержит вопрос: Принеси извинения за доставленные неудобства, прояви эмпатию («Понимаем ваши эмоции...») и дай конструктивный ответ (решение проблемы или объяснение).\nЕсли в отзыве есть конкретный вопрос (о размере, составе, доставке), обязательно дай на него четкий ответ.\nЕсли текста отзыва нет (отзыв без текста, только звезды): Составь универсальный, теплый и дружественный ответ. Поблагодари за высокую оценку и вырази надежду, что товар радует покупателя. Не придумывай, что именно понравилось покупателю.\nНазвание товара: Никогда не упоминай полное название товара из карточки. Вместо этого используй его общую категорию, не придумывай другие варианты товаров и не упоминай их в тексте ответа.\nКогда покупатель указал в отзыве Особенности товара - то необходимо их обязательно учесть при составлении отзыва, если это негативные особенности - то их необходимо учесть очень поверхностно, не расписывая подробно.\n\nЕсли товар возвращен (когда {{ $json.isAbleReturnProductOrders }} имеет значение true ): пиши сожаления, что пришлось вернуть заказ, и пожелай увидеть покупателя снова, в различных дружелюбных формах это пиши, чтобы повысить возвращаемость покупателя через возвращенные заказы.\n\nФинальная часть (обязательно для всех ответов):\nВ конце каждого ответа, после основного текста, всегда добавляй подпись на новой строке:\nС уважением и любовью,\nКоманда {{ $json.productDetails.brandName }} 💙\n\nВ тексте ответа не используй символ — только -\n\nВходные данные:\nИмя покупателя, который оставил отзыв: {{ $json.userName }}\nТекст отзыва: {{ $json.pros }} {{ $json.text }}\nНазвание товара: {{ $json.productDetails.productName }}\nОценка товара (от 1 до 5): {{ $json.productValuation }}\nТовар возвращен: {{ $json.isAbleReturnProductOrders }}\n",
+              "type": "string"
+            },
+            {
+              "id": "keep-id",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-reviewId",
+              "name": "reviewId",
+              "value": "={{ $json.reviewId || $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-text",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-productName",
+              "name": "productName",
+              "value": "={{ $json.productName }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-customerName",
+              "name": "customerName",
+              "value": "={{ $json.customerName }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "11ebb350-2f6b-44f4-902a-4a362ab2f92a",
+      "id": "8fed8552-9429-43fe-b93c-9110794d8176",
       "name": "📝 Prompt: 4-5 Звёзд",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        35808,
-        19280
+        11552,
+        4960
       ]
     },
     {
@@ -161,26 +190,56 @@
             {
               "id": "prompt-negative",
               "name": "systemPrompt",
-              "value": "Ты менеджер поддержки Wildberries. Отвечай ТОЛЬКО НА РУССКОМ ЯЗЫКЕ (кириллица).\n\nПРАВИЛА:\n1. Если есть имя покупателя - обращайся по имени\n2. Если имени нет - начни с нейтрального приветствия\n3. Извинись за негативный опыт (1-3 звезды)\n4. Упомяни товар из отзыва\n5. Предложи решение проблемы\n6. Максимум 2-3 предложения\n7. Без эмодзи\n8. Заботливый тон",
+              "value": "Роль: Ты - дружелюбный и вежливый представитель службы заботы о клиентах бренда, который отвечает на отзывы от имени бренда. \n",
               "type": "string"
             },
             {
               "id": "userPrompt",
               "name": "userPrompt",
-              "value": "={{ ($json.customerName ? 'Покупатель: ' + $json.customerName + '\\n\\n' : '') + 'Товар: ' + ($json.productName || 'товар') + '\\n\\nОценка: ' + $json.productValuation + ' звёзд\\n\\nОтзыв: ' + $json.text + '\\n\\nНапиши ответ с извинениями на русском языке.' }}",
+              "value": "=Задача: Твоя задача - отвечать на отзывы покупателей так, чтобы человек чувствовал заботу и внимание. Пиши заботливые, персонализированные и вариативные ответы на отзывы покупателей. \nТон общения: Дружелюбный, заботливый, вежливый. Избегай сухих и шаблонных фраз. Не используй шаблонов или повторяющихся формулировок. В каждом ответе проявляй креативность.\nСтиль: Живой разговорный язык, без канцеляризма, без лишнего пафоса. Избегай клише и слов в роде изделие, данный товар, результат.\n\nПравила обращения:\nОбращение к покупателю: Если в отзыве есть Имя покупателя - обратись по имени. Если имени нет или указан \"Покупатель Wildberries\": Не используй обращение по имени. Начинай ответ просто с приветствия: «Здравствуйте!», используй нейтральную теплую форму приветствия.\nПравила обработки отзывов:\nПроанализируй текст отзыва: Внимательно прочитай, что написал покупатель. Если отзыв негативный -  то необходимо ответ написать с сожалением, что не подошел товар.\nЕсли отзыв положительный: Поблагодари за выбор и теплые слова, обращай внимание на контекст и ключевые особенности текста отзыва - используй это для составления ответа.\nПиши развернутые ответы.\nЕсли отзыв отрицательный или содержит вопрос: Принеси извинения за доставленные неудобства, прояви эмпатию («Понимаем ваши эмоции...») и дай конструктивный ответ (решение проблемы или объяснение).\nЕсли в отзыве есть конкретный вопрос (о размере, составе, доставке), обязательно дай на него четкий ответ.\nЕсли текста отзыва нет (отзыв без текста, только звезды): Составь универсальный, теплый и дружественный ответ. Поблагодари за высокую оценку и вырази надежду, что товар радует покупателя. Не придумывай, что именно понравилось покупателю.\nНазвание товара: Никогда не упоминай полное название товара из карточки. Вместо этого используй его общую категорию, не придумывай другие варианты товаров и не упоминай их в тексте ответа.\nКогда покупатель указал в отзыве Особенности товара - то необходимо их обязательно учесть при составлении отзыва, если это негативные особенности - то их необходимо учесть очень поверхностно, не расписывая подробно.\n\nЕсли товар возвращен (когда {{ $json.isAbleReturnProductOrders }} имеет значение true ): пиши сожаления, что пришлось вернуть заказ, и пожелай увидеть покупателя снова, в различных дружелюбных формах это пиши, чтобы повысить возвращаемость покупателя через возвращенные заказы.\n\nФинальная часть (обязательно для всех ответов):\nВ конце каждого ответа, после основного текста, всегда добавляй подпись на новой строке:\nС уважением и любовью,\nКоманда {{ $json.productDetails.brandName }} 💙\n\nВ тексте ответа не используй символ — только -\n\nВходные данные:\nИмя покупателя, который оставил отзыв: {{ $json.userName }}\nТекст отзыва: {{ $json.pros }} {{ $json.text }}\nНазвание товара: {{ $json.productDetails.productName }}\nОценка товара (от 1 до 5): {{ $json.productValuation }}\nТовар возвращен: {{ $json.isAbleReturnProductOrders }}\n",
+              "type": "string"
+            },
+            {
+              "id": "keep-id-neg",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-reviewId-neg",
+              "name": "reviewId",
+              "value": "={{ $json.reviewId || $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-text-neg",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-productName-neg",
+              "name": "productName",
+              "value": "={{ $json.productName }}",
+              "type": "string"
+            },
+            {
+              "id": "keep-customerName-neg",
+              "name": "customerName",
+              "value": "={{ $json.customerName }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "7fcd6050-d857-45ed-be2a-a2d359f32f2a",
+      "id": "2305e7a4-fe4f-4389-9bfa-8b07b0defbb8",
       "name": "📝 Prompt: 1-3 Звезды",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        35808,
-        19488
+        11552,
+        5168
       ]
     },
     {
@@ -192,28 +251,43 @@
           "systemMessage": "={{ $json.systemPrompt }}"
         }
       },
-      "id": "f3b7c901-4718-4bd1-88ad-3896edfc2c17",
+      "id": "ce5296ba-37d0-4554-b42e-8feaeec66dc2",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
       "position": [
-        36032,
-        19392
+        11776,
+        5072
       ]
     },
     {
       "parameters": {
-        "amount": 30
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prepare-request",
+              "name": "requestBody",
+              "value": "={{ { id: ($json.id || ($node['Unpack Feedbacks'] && $node['Unpack Feedbacks'].json && $node['Unpack Feedbacks'].json.id)), reviewId: ($json.reviewId || $json.id || ($node['Unpack Feedbacks'] && $node['Unpack Feedbacks'].json && $node['Unpack Feedbacks'].json.id)), text: ($json.output || $json.text || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || ($input.first().json && $input.first().json.output) || '') } }}",
+              "type": "json"
+            },
+            {
+              "id": "debug-request",
+              "name": "debugRequestBody",
+              "value": "={{ JSON.stringify({input: $json, unpack: ($node['Unpack Feedbacks'] && $node['Unpack Feedbacks'].json)}) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
       },
-      "id": "c15aba43-ce09-4584-a820-b17c5bb58ac8",
-      "name": "⏳ Wait 30 sec",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
+      "id": "16375921-e74c-475e-99d4-754476cfec4a",
+      "name": "Prepare Send Body",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        36256,
-        19392
-      ],
-      "webhookId": "5c548eac-dffc-467e-9752-c7f138df5ac6"
+        12064,
+        5072
+      ]
     },
     {
       "parameters": {
@@ -234,7 +308,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"id\": \"{{ $json.id }}\",\n  \"reviewId\": \"={{ $json.reviewId || $json.id }}\",\n  \"text\": \"={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}\"\n}",
+        "jsonBody": "={{ $json.requestBody }}",
         "options": {
           "response": {
             "response": {
@@ -243,57 +317,151 @@
           }
         }
       },
-      "id": "1a7e7f8f-70e0-422b-8a77-2f301d0c6cbb",
+      "id": "508c8254-d1d2-43c3-8404-2ed61d05d1d9",
       "name": "Send Answer to WB",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        36480,
-        19392
+        12288,
+        5072
       ]
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
+        "method": "POST",
+        "url": "https://feedbacks-api.wildberries.ru/api/v1/feedbacks/answer",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "id": "debug-id",
-              "name": "debug_id",
-              "value": "={{ $json.id }}",
-              "type": "string"
+              "name": "Authorization",
+              "value": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwOTA0djEiLCJ0eXAiOiJKV1QifQ.eyJhY2MiOjEsImVudCI6MSwiZXhwIjoxNzg3MjY4NTcwLCJpZCI6IjAxOWM3NWE5LTg4MDctNzk3Ni1hYTAwLWM5ODIzYjY3MzA5OCIsImlpZCI6NDYyMTg4OTAsIm9pZCI6NDYxOTAsInMiOjEyMDMwLCJzaWQiOiI5MmZkMzIxOS1iNzhlLTU4MjctODM1Ni00YzRlNjNiNjQwNWIiLCJ0IjpmYWxzZSwidWlkIjo0NjIxODg5MH0.o4T6GosZfIwjJPtH4D6BXMyew8oLJUv-gB-gkSlKXVZW5QyAlMWZP4BO-AU7mbldwtJMTeAIg-jqwfLW1zlEsA"
             },
             {
-              "id": "debug-text",
-              "name": "debug_text",
-              "value": "={{ $json.output || $json.text || $json.answer || (Array.isArray($json.choices) && $json.choices[0] && ($json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : $json.choices[0].text)) || '' }}",
-              "type": "string"
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
-        "options": {}
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
       },
-      "id": "b1c2d3e4-0000-4000-0000-abcdef123456",
-      "name": "Debug: Log Before Send",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "id": "aa4edbef-2b5f-4b8b-b3a6-604ab6a6029a",
+      "name": "Resend Answer to WB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        36368,
-        19392
+        12880,
+        5392
       ]
     },
     {
       "parameters": {
-        "amount": 60
+        "url": "https://feedbacks-api.wildberries.ru/api/v1/feedbacks",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "reviewId",
+              "value": "={{ $json.reviewId || $json.id }}"
+            },
+            {
+              "name": "take",
+              "value": "1"
+            },
+            {
+              "name": "skip",
+              "value": "0"
+            },
+            {
+              "name": "isAnswered",
+              "value": "=true"
+            },
+            {
+              "name": "order",
+              "value": "dateDesc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwOTA0djEiLCJ0eXAiOiJKV1QifQ.eyJhY2MiOjEsImVudCI6MSwiZXhwIjoxNzg3MjY4NTcwLCJpZCI6IjAxOWM3NWE5LTg4MDctNzk3Ni1hYTAwLWM5ODIzYjY3MzA5OCIsImlpZCI6NDYyMTg4OTAsIm9pZCI6NDYxOTAsInMiOjEyMDMwLCJzaWQiOiI5MmZkMzIxOS1iNzhlLTU4MjctODM1Ni00YzRlNjNiNjQwNWIiLCJ0IjpmYWxzZSwidWlkIjo0NjIxODg5MH0.o4T6GosZfIwjJPtH4D6BXMyew8oLJUv-gB-gkSlKXVZW5QyAlMWZP4BO-AU7mbldwtJMTeAIg-jqwfLW1zlEsA"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
       },
-      "id": "49d40a86-9a4a-403b-b91d-33435eda58ae",
-      "name": "⏳ Wait 60 sec",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
+      "id": "2bc297e7-eb2e-467a-9538-57d6b3b3a3f3",
+      "name": "Verify Answer on WB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        36688,
-        19392
+        12208,
+        5392
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "answer-exists-1",
+              "leftValue": "={{ !!($json.data && $json.data.feedbacks && $json.data.feedbacks[0] && $json.data.feedbacks[0].answer) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "bool",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "74693a67-ddb6-48e0-a5e7-952268b01c7b",
+      "name": "Answer Persisted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        12448,
+        5392
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "60392442-8cf2-4dc9-a335-fe58719f9673",
+      "name": "⏳ Wait 30 sec",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        12592,
+        5488
       ],
-      "webhookId": "046984c1-6605-441b-9227-ef415513e954"
+      "webhookId": "855bc5c4-e1d1-4933-80d2-95e0e74a7408"
     },
     {
       "parameters": {
@@ -303,15 +471,15 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        35904,
-        19600
+        11808,
+        5296
       ],
-      "id": "d505ae4f-ec77-487a-9abf-228fa07be5d4",
+      "id": "0c6a7963-24ec-47e7-9ec6-f2aa0fa23a99",
       "name": "OpenRouter Chat Model1",
       "credentials": {
         "openRouterApi": {
-          "id": "vfKjc6B2J0U0qTlo",
-          "name": "OpenRouter account 2"
+          "id": "TQWE8IfiVTWNSn6F",
+          "name": "OpenRouter account OPEN-R API"
         }
       }
     }
@@ -413,25 +581,14 @@
       "main": [
         [
           {
-            "node": "⏳ Wait 30 sec",
+            "node": "Prepare Send Body",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "⏳ Wait 30 sec": {
-      "main": [
-        [
-          {
-            "node": "Debug: Log Before Send",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Debug: Log Before Send": {
+    "Prepare Send Body": {
       "main": [
         [
           {
@@ -442,11 +599,50 @@
         ]
       ]
     },
-    "Send Answer to WB": {
+    "⏳ Wait 30 sec": {
       "main": [
         [
           {
-            "node": "⏳ Wait 60 sec",
+            "node": "Resend Answer to WB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Answer to WB": {
+      "main": [
+        []
+      ]
+    },
+    "Resend Answer to WB": {
+      "main": [
+        [
+          {
+            "node": "Verify Answer on WB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Answer on WB": {
+      "main": [
+        [
+          {
+            "node": "Answer Persisted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Persisted?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "⏳ Wait 30 sec",
             "type": "main",
             "index": 0
           }
@@ -471,11 +667,10 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "5c11affa-84d3-4625-886c-99c9dd73155e",
+  "versionId": "a7001d5d-1241-46fa-9234-7c3f79e44e8a",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "a17f7186dae1a0a4a217657098e5364870a5ce7319662eeafab6746582796adb"
   },
-  "id": "iIZD58N47CE8pGux",
+  "id": "FDzOaP4MKbR6ADcT",
   "tags": []
 }
